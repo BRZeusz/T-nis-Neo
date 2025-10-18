@@ -1,71 +1,86 @@
 -- TenisNeo.lua
--- Coloque em StarterPlayer/StarterPlayerScripts ou carregue via loadstring(...)
--- Versão com cleanup reforçado para evitar conflitos ao reinjetar via URL.
+-- LocalScript único. Coloque em StarterPlayer/StarterPlayerScripts ou carregue via loadstring.
+-- Versão com limpeza reforçada para evitar problemas ao reinjetar (duplica/overlap/funcionalidades sumindo).
 
--- Early cleanup: procura e remove GUIs antigas e desconecta conexões salvas em _G._TenisNeoInternal
+-- ===== Aggressive cleanup of previous injections =====
+local function safeDisconnect(conn)
+	pcall(function()
+		if conn and conn.Disconnect then conn:Disconnect() end
+	end)
+end
 local function safeDestroy(obj)
 	pcall(function()
 		if obj and obj.Destroy then obj:Destroy() end
 	end)
 end
 
--- Try to clean previous injection references
+-- If previous internal table exists, stop its loops and destroy gui
 if type(_G) == "table" and _G._TenisNeoInternal then
 	local old = _G._TenisNeoInternal
-	pcall(function() if old.bindingConn and old.bindingConn.Disconnect then old.bindingConn:Disconnect() end end)
-	pcall(function() if old.toggleConn and old.toggleConn.Disconnect then old.toggleConn:Disconnect() end end)
-	pcall(function() if old.dragConn and old.dragConn.Disconnect then old.dragConn:Disconnect() end end)
-	pcall(function() if old.screenGui and old.screenGui.Destroy then old.screenGui:Destroy() end end)
+	-- set flags to false to stop loops (if present)
+	pcall(function() if old.autoState then old.autoState.hitRunning = false; old.autoState.serveRunning = false end end)
+	-- disconnect connections
+	pcall(function() safeDisconnect(old.bindingConn) end)
+	pcall(function() safeDisconnect(old.toggleConn) end)
+	pcall(function() safeDisconnect(old.dragConn) end)
+	-- destroy GUI
+	pcall(function() safeDestroy(old.screenGui) end)
+	-- cleanup globals
 	_G.TenisNeoConfig = nil
 	_G._TenisNeoInternal = nil
 end
 
--- Also search for any existing ScreenGui named "TenisNeoGui" in PlayerGui and CoreGui (some executors use CoreGui)
+-- Also search PlayerGui and CoreGui for any TenisNeoGui or instances with "TenisNeo" in the name
 pcall(function()
 	local Players = game:GetService("Players")
+	local core = game:GetService("CoreGui")
 	if Players.LocalPlayer then
 		local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
 		if pg then
-			local existing = pg:FindFirstChild("TenisNeoGui")
-			if existing then existing:Destroy() end
+			for _,child in ipairs(pg:GetChildren()) do
+				if child.Name == "TenisNeoGui" or tostring(child.Name):lower():find("tenisneo") then
+					safeDestroy(child)
+				end
+			end
+		end
+	end
+	-- CoreGui (some executors parent to CoreGui)
+	if core then
+		for _,child in ipairs(core:GetChildren()) do
+			if child.Name == "TenisNeoGui" or tostring(child.Name):lower():find("tenisneo") then
+				safeDestroy(child)
+			end
 		end
 	end
 end)
-pcall(function()
-	local core = game:GetService("CoreGui")
-	if core then
-		local existing = core:FindFirstChild("TenisNeoGui")
-		if existing then existing:Destroy() end
-	end
-end)
 
--- Now normal startup
+-- ===== Services & player =====
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local player = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer") and Players.LocalPlayer
+local player = Players.LocalPlayer
 if not player then player = Players:WaitForChild("LocalPlayer") end
 local playerGui = player:WaitForChild("PlayerGui")
 
--- create internal table to allow future cleanup
+-- create fresh internal table for future cleanup
 _G._TenisNeoInternal = {}
+local internal = _G._TenisNeoInternal
 
--- Config / API
+-- ===== Config / API =====
 local Config = {
 	Enabled = true,
 	ToggleKey = Enum.KeyCode.F,
 	ToggleKeyName = "F",
 	_callbacks = { Enabled = {}, ToggleKey = {}, Colors = {} },
 	Colors = {
-		Background = Color3.fromRGB(28,28,30),
-		Accent = Color3.fromRGB(220,40,80),
+		Background = Color3.fromRGB(28, 28, 30),
+		Accent = Color3.fromRGB(220, 40, 80),
 		Text = Color3.fromRGB(240,240,240)
 	}
 }
-
 local function notifyEnabled(v) for _,cb in ipairs(Config._callbacks.Enabled) do pcall(cb,v) end end
 local function notifyToggleKey(v) for _,cb in ipairs(Config._callbacks.ToggleKey) do pcall(cb,v) end end
 local function notifyColors(v) for _,cb in ipairs(Config._callbacks.Colors) do pcall(cb,v) end end
@@ -95,22 +110,19 @@ function Config:SetColors(colors)
 	return true
 end
 
--- expose API
+-- expose API globally
 _G.TenisNeoConfig = Config
 
--- Build UI (robust)
+-- ===== Build UI =====
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TenisNeoGui"
 screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 50
--- parent to PlayerGui preferred, fallback to CoreGui (some environments)
-local parentSuccess, parentErr = pcall(function() screenGui.Parent = playerGui end)
-if not parentSuccess then
-	pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
-end
-_G._TenisNeoInternal.screenGui = screenGui
+-- try playerGui parent, fallback to CoreGui
+local ok, err = pcall(function() screenGui.Parent = playerGui end)
+if not ok then pcall(function() screenGui.Parent = game:GetService("CoreGui") end) end
+internal.screenGui = screenGui
 
--- main frame
 local frame = Instance.new("Frame")
 frame.Name = "Main"
 frame.AnchorPoint = Vector2.new(0,0)
@@ -118,13 +130,11 @@ frame.Position = UDim2.new(0.18,0,0.18,0)
 frame.Size = UDim2.new(0,600,0,460)
 frame.BackgroundColor3 = Config.Colors.Background
 frame.BorderSizePixel = 0
-frame.Visible = Config.Enabled
 frame.Parent = screenGui
 frame.ClipsDescendants = true
 local corner = Instance.new("UICorner", frame); corner.CornerRadius = UDim.new(0,12)
 
--- shadow
-local shadow = Instance.new("ImageLabel")
+local shadow = Instance.new("ImageLabel", frame)
 shadow.Name = "Shadow"
 shadow.AnchorPoint = Vector2.new(0,0)
 shadow.Position = UDim2.new(0,-14,0,-14)
@@ -133,10 +143,9 @@ shadow.BackgroundTransparency = 1
 shadow.Image = "rbxassetid://166617432"
 shadow.ImageColor3 = Color3.new(0,0,0)
 shadow.ImageTransparency = 0.85
-shadow.Parent = frame
 shadow.ZIndex = -1
 
--- topBar (draggable)
+-- Top bar (draggable)
 local topBar = Instance.new("Frame", frame)
 topBar.Name = "TopBar"
 topBar.Size = UDim2.new(1,0,0,64)
@@ -178,7 +187,7 @@ mainArea.Size = UDim2.new(1,0,1,-64)
 mainArea.Position = UDim2.new(0,0,0,64)
 mainArea.BackgroundTransparency = 1
 
--- side & content (scrolling)
+-- Side tabs
 local side = Instance.new("Frame", mainArea)
 side.Name = "Side"
 side.Size = UDim2.new(0,180,1,-24)
@@ -186,6 +195,7 @@ side.Position = UDim2.new(0,16,0,12)
 side.BackgroundTransparency = 1
 local sideLayout = Instance.new("UIListLayout", side); sideLayout.SortOrder = Enum.SortOrder.LayoutOrder; sideLayout.Padding = UDim.new(0,12)
 
+-- Content (scrolling)
 local content = Instance.new("ScrollingFrame", mainArea)
 content.Name = "Content"
 content.Position = UDim2.new(0,216,0,12)
@@ -209,6 +219,7 @@ local function clearContent()
 	end
 end
 
+-- tab buttons
 local tabButtons = {}
 local function createTabButton(text)
 	local btn = Instance.new("TextButton")
@@ -230,15 +241,15 @@ end
 local autoBtn = createTabButton("AUTO")
 local settingsBtn = createTabButton("SETTINGS")
 
--- UIRefs & binding management
+-- UIRefs and binding management
 local UIRefs = { lblKey = nil, changeKeyBtn = nil, bindingActive = false }
 local bindingConn = nil
 local function stopBinding()
-	if bindingConn then pcall(function() bindingConn:Disconnect() end) end
+	if bindingConn then safeDisconnect(bindingConn) end
 	bindingConn = nil
 	UIRefs.bindingActive = false
 	if UIRefs.changeKeyBtn then UIRefs.changeKeyBtn.Text = "Mudar tecla" end
-	_G._TenisNeoInternal.bindingConn = nil
+	internal.bindingConn = nil
 end
 local function startBinding(lblKey, changeKeyBtn, info)
 	if UIRefs.bindingActive then return end
@@ -256,7 +267,7 @@ local function startBinding(lblKey, changeKeyBtn, info)
 			stopBinding()
 		end
 	end)
-	_G._TenisNeoInternal.bindingConn = bindingConn
+	internal.bindingConn = bindingConn
 end
 
 local function selectTab(activeBtn)
@@ -264,8 +275,9 @@ local function selectTab(activeBtn)
 	activeBtn.BackgroundColor3 = Config.Colors.Background:Lerp(Config.Colors.Accent, 0.06)
 end
 
--- AUTO behavior (hit/serve) same approach as before
+-- AUTO behavior
 local autoState = { hitRunning=false, serveRunning=false, serveRotate=0, servePower=100 }
+internal.autoState = autoState
 
 local function startAutoHit()
 	if autoState.hitRunning then return end
@@ -273,7 +285,7 @@ local function startAutoHit()
 	task.spawn(function()
 		while autoState.hitRunning and screenGui.Parent do
 			if not game:IsLoaded() then game.Loaded:Wait() end
-			local args = {{ CamPos = Vector3.new(0,0,0), HitPos = Vector3.new(0,0,0), HitBallType = 0, ClientTick = 0, CamDir = Vector3.new(0,0,0), AttackMoveSpeed = Vector3.new(0,0,0) }}
+			local args = {{ CamPos = Vector3.new(0,0,0), HitPos = Vector3.new(0,0,0), HitBallType = 0, ClientTick = 0, CamDir = Vector3.new(0,0,0), AttackMoveSpeed = Vector3.new(0,0,0)}}
 			pcall(function()
 				local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 				if remotes then
@@ -307,6 +319,7 @@ local function startAutoServe()
 end
 local function stopAutoServe() autoState.serveRunning = false end
 
+-- UI builders
 local function showAuto()
 	selectTab(autoBtn)
 	clearContent()
@@ -369,7 +382,6 @@ local function showAuto()
 	powerPlus.Size = UDim2.new(0,36,0,28); powerPlus.Position = UDim2.new(0,176,0,64); powerPlus.BackgroundColor3 = Color3.fromRGB(40,40,44)
 	powerPlus.Font = Enum.Font.GothamBold; powerPlus.Text = "+"; powerPlus.TextSize = 16; powerPlus.TextColor3 = Config.Colors.Text
 	local ppc = Instance.new("UICorner", powerPlus); ppc.CornerRadius = UDim.new(0,6)
-
 	powerMinus.MouseButton1Click:Connect(function() autoState.servePower = math.clamp(autoState.servePower - 5, 0, 100); powerLbl.Text = "Power: "..tostring(autoState.servePower) end)
 	powerPlus.MouseButton1Click:Connect(function() autoState.servePower = math.clamp(autoState.servePower + 5, 0, 100); powerLbl.Text = "Power: "..tostring(autoState.servePower) end)
 
@@ -384,21 +396,19 @@ local function showAuto()
 	end)
 end
 
--- SETTINGS content (kept similar; Discord at top)
+-- SETTINGS UI builder (Discord at top)
 local function showSettings()
 	selectTab(settingsBtn)
 	clearContent()
 
-	-- Title
 	local titleLbl = Instance.new("TextLabel", content)
 	titleLbl.Size = UDim2.new(1,-20,0,30); titleLbl.BackgroundTransparency = 1; titleLbl.Font = Enum.Font.Bangers
 	titleLbl.TextSize = 20; titleLbl.TextColor3 = Config.Colors.Text; titleLbl.Text = "SETTINGS"; titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 	titleLbl.LayoutOrder = 1
 
-	-- Discord frame top (ensures visible)
+	-- Discord frame
 	local discordFrame = Instance.new("Frame", content)
 	discordFrame.Size = UDim2.new(1,-20,0,100); discordFrame.BackgroundTransparency = 1; discordFrame.LayoutOrder = 2
-
 	local dTitle = Instance.new("TextLabel", discordFrame)
 	dTitle.Size = UDim2.new(1,0,0,20); dTitle.BackgroundTransparency = 1; dTitle.Font = Enum.Font.GothamBold; dTitle.TextSize = 14
 	dTitle.TextColor3 = Config.Colors.Text; dTitle.Text = "DISCORD"; dTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -430,7 +440,49 @@ local function showSettings()
 		end
 	end)
 
-	-- Key info and other settings (similar to previous)
+	local copyInviteBtn = Instance.new("TextButton", discordFrame)
+	copyInviteBtn.Size = UDim2.new(0,140,0,28); copyInviteBtn.Position = UDim2.new(0,350,0,28)
+	copyInviteBtn.BackgroundColor3 = Color3.fromRGB(40,40,44); copyInviteBtn.Font = Enum.Font.Gotham; copyInviteBtn.TextSize = 12
+	copyInviteBtn.TextColor3 = Config.Colors.Text; copyInviteBtn.Text = "Copiar invite"
+	local cic = Instance.new("UICorner", copyInviteBtn); cic.CornerRadius = UDim.new(0,6)
+	copyInviteBtn.MouseButton1Click:Connect(function()
+		local ok = false
+		pcall(function() setclipboard(invite); ok = true end)
+		if ok then
+			local msg = Instance.new("TextLabel", discordFrame); msg.Size = UDim2.new(1,0,0,18); msg.Position = UDim2.new(0,0,0,66)
+			msg.BackgroundTransparency = 1; msg.Font = Enum.Font.Gotham; msg.TextSize = 12; msg.TextColor3 = Color3.fromRGB(200,200,200)
+			msg.Text = "Invite copiado para a área de transferência."
+			game.Debris:AddItem(msg, 3)
+		else
+			local msg = Instance.new("TextLabel", discordFrame); msg.Size = UDim2.new(1,0,0,18); msg.Position = UDim2.new(0,0,0,66)
+			msg.BackgroundTransparency = 1; msg.Font = Enum.Font.Gotham; msg.TextSize = 12; msg.TextColor3 = Color3.fromRGB(200,200,200)
+			msg.Text = "Não foi possível copiar. Link: "..invite
+			game.Debris:AddItem(msg, 4)
+		end
+	end)
+
+	local copyMsgBtn = Instance.new("TextButton", discordFrame)
+	copyMsgBtn.Size = UDim2.new(0,200,0,28); copyMsgBtn.Position = UDim2.new(0,500,0,28)
+	copyMsgBtn.BackgroundColor3 = Color3.fromRGB(40,40,44); copyMsgBtn.Font = Enum.Font.Gotham; copyMsgBtn.TextSize = 12
+	copyMsgBtn.TextColor3 = Config.Colors.Text; copyMsgBtn.Text = "Copiar mensagem de ajuda"
+	local cmc = Instance.new("UICorner", copyMsgBtn); cmc.CornerRadius = UDim.new(0,6)
+	copyMsgBtn.MouseButton1Click:Connect(function()
+		local ok = false
+		pcall(function() setclipboard(helpMessage); ok = true end)
+		if ok then
+			local msg = Instance.new("TextLabel", discordFrame); msg.Size = UDim2.new(1,0,0,18); msg.Position = UDim2.new(0,0,0,66)
+			msg.BackgroundTransparency = 1; msg.Font = Enum.Font.Gotham; msg.TextSize = 12; msg.TextColor3 = Color3.fromRGB(200,200,200)
+			msg.Text = "Mensagem copiada para área de transferência."
+			game.Debris:AddItem(msg, 3)
+		else
+			local msg = Instance.new("TextLabel", discordFrame); msg.Size = UDim2.new(1,0,0,18); msg.Position = UDim2.new(0,0,0,66)
+			msg.BackgroundTransparency = 1; msg.Font = Enum.Font.Gotham; msg.TextSize = 12; msg.TextColor3 = Color3.fromRGB(200,200,200)
+			msg.Text = "Não foi possível copiar automaticamente. Texto: "..helpMessage
+			game.Debris:AddItem(msg, 5)
+		end
+	end)
+
+	-- Key info
 	local lblKey = Instance.new("TextLabel", content)
 	lblKey.Size = UDim2.new(1,-20,0,22); lblKey.BackgroundTransparency = 1; lblKey.Font = Enum.Font.Gotham
 	lblKey.TextSize = 14; lblKey.TextColor3 = Config.Colors.Text; lblKey.Text = "Tecla para abrir/fechar: "..Config.ToggleKeyName
@@ -445,22 +497,11 @@ local function showSettings()
 	local info = Instance.new("TextLabel", content)
 	info.Size = UDim2.new(1,-20,0,46); info.BackgroundTransparency = 1; info.Font = Enum.Font.Gotham
 	info.TextSize = 12; info.TextColor3 = Color3.fromRGB(180,180,180); info.TextWrapped = true
-	info.Text = "Clique em 'Mudar tecla' e pressione a nova tecla desejada. Esc cancela."
-	info.LayoutOrder = 5
+	info.Text = "Clique em 'Mudar tecla' e pressione a nova tecla desejada. Esc cancela."; info.LayoutOrder = 5
 
-	-- Color swatches and buttons (omitted for brevity in this block but kept in full script)
-	-- ... create swatches and destroy/dsicconnect buttons similarly as before ...
-	-- Assign UIRefs and start binding on click
-	UIRefs.lblKey = lblKey
-	UIRefs.changeKeyBtn = changeKeyBtn
-	changeKeyBtn.MouseButton1Click:Connect(function()
-		if UIRefs.bindingActive then return end
-		startBinding(lblKey, changeKeyBtn, info)
-	end)
-
-	-- Disable / Destroy buttons (similar to prior implementation)
-	-- Ensure destroying also calls safeDestroy and clears _G._TenisNeoInternal
-	local btnRow = Instance.new("Frame", content); btnRow.Size = UDim2.new(1,-20,0,44); btnRow.LayoutOrder = 9; btnRow.BackgroundTransparency = 1
+	-- Color swatches omitted here for brevity (kept same logic as earlier scripts)
+	-- Buttons row: disable & destroy
+	local btnRow = Instance.new("Frame", content); btnRow.Size = UDim2.new(1,-20,0,44); btnRow.BackgroundTransparency = 1; btnRow.LayoutOrder = 9
 	local disableBtn = Instance.new("TextButton", btnRow); disableBtn.Size = UDim2.new(0,220,1,0); disableBtn.BackgroundColor3 = Color3.fromRGB(70,18,18)
 	disableBtn.Font = Enum.Font.GothamBold; disableBtn.Text = "Desativar menu"; local dcorner = Instance.new("UICorner", disableBtn); dcorner.CornerRadius = UDim.new(0,6)
 	disableBtn.MouseButton1Click:Connect(function() Config:DisableMenu() end)
@@ -468,34 +509,41 @@ local function showSettings()
 	destroyBtn.BackgroundColor3 = Color3.fromRGB(40,40,44); destroyBtn.Font = Enum.Font.GothamBold; destroyBtn.Text = "Destruir menu (desejetar)"
 	local dc = Instance.new("UICorner", destroyBtn); dc.CornerRadius = UDim.new(0,6)
 	destroyBtn.MouseButton1Click:Connect(function()
-		-- stop autos (if running)
+		-- stop all
 		pcall(function() autoState.hitRunning = false; autoState.serveRunning = false end)
-		-- stop bindings & connections
+		-- stop bindings
 		stopBinding()
-		if _G._TenisNeoInternal and _G._TenisNeoInternal.toggleConn then pcall(function() _G._TenisNeoInternal.toggleConn:Disconnect() end) end
+		-- disconnect toggle
+		pcall(function() if internal.toggleConn then internal.toggleConn:Disconnect(); internal.toggleConn = nil end end)
 		_G.TenisNeoConfig = nil
 		safeDestroy(screenGui)
 		_G._TenisNeoInternal = nil
+	end)
+
+	UIRefs.lblKey = lblKey
+	UIRefs.changeKeyBtn = changeKeyBtn
+	changeKeyBtn.MouseButton1Click:Connect(function()
+		if UIRefs.bindingActive then return end
+		startBinding(lblKey, changeKeyBtn, info)
 	end)
 end
 
 -- Connect tabs
 autoBtn.MouseButton1Click:Connect(function() pcall(showAuto) end)
 settingsBtn.MouseButton1Click:Connect(function() pcall(showSettings) end)
--- show default
 pcall(showAuto)
 
--- Toggle key binding (robust)
+-- Toggle key binding
 local toggleConn = nil
 local function bindToggleKey(key)
-	if toggleConn then pcall(function() toggleConn:Disconnect() end) end
+	if toggleConn then safeDisconnect(toggleConn) end
 	toggleConn = UserInputService.InputBegan:Connect(function(input, processed)
 		if processed then return end
 		if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == key then
 			Config:ToggleEnabled()
 		end
 	end)
-	_G._TenisNeoInternal.toggleConn = toggleConn
+	internal.toggleConn = toggleConn
 end
 bindToggleKey(Config.ToggleKey)
 Config:OnToggleKeyChanged(function(k) bindToggleKey(k); if UIRefs.lblKey and UIRefs.lblKey.Parent then UIRefs.lblKey.Text = "Tecla para abrir/fechar: "..Config.ToggleKeyName end end)
@@ -516,11 +564,11 @@ end
 Config:OnColorsChanged(function(c) applyColors(c) end)
 applyColors(Config.Colors)
 
--- visibility update
+-- visibility
 Config:OnEnabledChanged(function(v) frame.Visible = v end)
 frame.Visible = Config.Enabled
 
--- draggable logic (store conn for cleanup)
+-- Draggable logic (store conn)
 local dragging = false
 local dragOffset = Vector2.new(0,0)
 local dragConn = RunService.RenderStepped:Connect(function()
@@ -536,7 +584,7 @@ local dragConn = RunService.RenderStepped:Connect(function()
 	if newY + height > screenH then newY = screenH - height end
 	frame.Position = UDim2.new(0, newX, 0, newY)
 end)
-_G._TenisNeoInternal.dragConn = dragConn
+internal.dragConn = dragConn
 
 topBar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -551,17 +599,17 @@ topBar.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- Save refs for next cleanup
-_G._TenisNeoInternal.bindingConn = bindingConn
-_G._TenisNeoInternal.toggleConn = toggleConn
-_G._TenisNeoInternal.dragConn = dragConn
-_G._TenisNeoInternal.screenGui = screenGui
+-- Save refs for future cleanup
+internal.bindingConn = bindingConn
+internal.toggleConn = toggleConn
+internal.dragConn = dragConn
+internal.screenGui = screenGui
 
--- Cleanup handler
+-- Cleanup handler when GUI destroyed
 screenGui.Destroying:Connect(function()
 	stopBinding()
-	if _G._TenisNeoInternal and _G._TenisNeoInternal.toggleConn then pcall(function() _G._TenisNeoInternal.toggleConn:Disconnect() end) end
-	if _G._TenisNeoInternal and _G._TenisNeoInternal.dragConn then pcall(function() _G._TenisNeoInternal.dragConn:Disconnect() end) end
+	pcall(function() if internal.toggleConn then internal.toggleConn:Disconnect() end end)
+	pcall(function() if internal.dragConn then internal.dragConn:Disconnect() end end)
 	_G.TenisNeoConfig = nil
 	_G._TenisNeoInternal = nil
 end)
