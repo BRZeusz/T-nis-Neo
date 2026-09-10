@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Injector - Gerenciador de Cookies</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .service-btn {
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .service-btn:hover {
+            border-color: #667eea;
+            background: #f5f5ff;
+            transform: translateY(-2px);
+        }
+
+        .service-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .upload-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            margin-bottom: 15px;
+        }
+
+        .upload-area:hover {
+            background: #f5f5ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.drag-over {
+            background: #f0f0ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        textarea, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .link-container {
+            background: #f0f0ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .link-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .link-box input {
+            margin: 0;
+            flex: 1;
+            background: white;
+        }
+
+        .copy-btn {
+            padding: 12px 20px;
+            width: auto;
+            min-width: 100px;
+        }
+
+        .cookies-list {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .cookie-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cookie-info {
+            flex: 1;
+        }
+
+        .cookie-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .cookie-date {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .delete-btn {
+            background: #ff6b6b;
+            padding: 8px 15px;
+            width: auto;
+            font-size: 0.9em;
+        }
+
+        .delete-btn:hover {
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .share-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .share-options button {
+            padding: 10px;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍪 Cookie Injector</h1>
+            <p>Gerenciador de cookies para suas contas</p>
+        </div>
+
+        <div class="content">
+            <!-- Seção de Upload -->
+            <div class="section">
+                <h2>📤 Upload de Cookies</h2>
+                
+                <div class="services" id="services">
+                    <button class="service-btn active" data-service="Netflix">Netflix</button>
+                    <button class="service-btn" data-service="HBOMax">HBO Max</button>
+                    <button class="service-btn" data-service="Disney+">Disney+</button>
+                    <button class="service-btn" data-service="Prime Video">Prime Video</button>
+                    <button class="service-btn" data-service="YouTube">YouTube</button>
+                    <button class="service-btn" data-service="Twitter">Twitter</button>
+                    <button class="service-btn" data-service="Instagram">Instagram</button>
+                    <button class="service-btn" data-service="Facebook">Facebook</button>
+                </div>
+
+                <div class="upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📄</div>
+                        <p>Clique ou arraste um arquivo .txt aqui</p>
+                        <input type="file" id="fileInput" accept=".txt">
+                    </div>
+                    <p style="font-size: 0.9em; color: #999; margin-bottom: 15px;">
+                        Ou cole os cookies direto:
+                    </p>
+                    <textarea id="cookieInput" placeholder="Cole seus cookies aqui..." rows="8"></textarea>
+                    <button onclick="saveCookies()">💾 Salvar Cookies</button>
+                </div>
+
+                <div id="message" class="message"></div>
+            </div>
+
+            <!-- Seção de Cookies Salvos -->
+            <div class="section">
+                <h2>🔐 Seus Cookies</h2>
+
+                <div class="info-box">
+                    ⚠️ <strong>Segurança:</strong> Seus cookies são armazenados localmente no seu navegador. Nunca compartilhe links com pessoas que você não confia!
+                </div>
+
+                <div id="cookiesList" class="cookies-list">
+                    <p style="color: #999; text-align: center;">Nenhum cookie salvo ainda</p>
+                </div>
+
+                <div class="link-container" id="linkContainer" style="display: none;">
+                    <h3 style="margin-bottom: 15px; color: #333;">📎 Gerar Link de Injeção</h3>
+                    <label style="display: block; margin-bottom: 15px;">
+                        <strong>Duração do link:</strong>
+                        <select id="linkDuration" style="width: 100%; padding: 8px; margin-top: 5px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                            <option value="1hour">1 hora</option>
+                            <option value="6hours">6 horas</option>
+                            <option value="24hours">24 horas</option>
+                            <option value="7days">7 dias</option>
+                            <option value="infinite">Sem expiração</option>
+                        </select>
+                    </label>
+                    <div class="share-options">
+                        <button onclick="generateLink('all')">🔗 Todos</button>
+                        <button onclick="generateLink('selected')">✅ Selecionados</button>
+                    </div>
+                    <div class="link-box" id="linkBox" style="display: none;">
+                        <input type="text" id="generatedLink" readonly>
+                        <button class="copy-btn" onclick="copyLink()">📋 Copiar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

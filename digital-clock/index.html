@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relógio Digital - Múltiplos Fusos Horários</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #00ff88;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #00ff88;
+            color: #00ff88;
+            letter-spacing: 3px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #00cc66;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        label {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        select, input {
+            padding: 8px 12px;
+            border: 2px solid #00ff88;
+            background: #0f3460;
+            color: #00ff88;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+
+        select:hover, input:hover {
+            border-color: #00cc66;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #00cc66;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+
+        button {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            color: #0f3460;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .clocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .clock-card {
+            background: rgba(15, 52, 96, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .clock-card:hover {
+            border-color: #00cc66;
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .clock-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00ff88, transparent);
+            animation: scan 2s infinite;
+        }
+
+        @keyframes scan {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .clock-city {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .clock-timezone {
+            font-size: 0.9em;
+            color: #00cc66;
+            margin-bottom: 15px;
+        }
+
+        .clock-time {
+            font-size: 3em;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+            margin: 20px 0;
+            letter-spacing: 2px;
+            font-family: 'Digital-7', 'Courier New', monospace;
+        }
+
+        .clock-date {
+            font-size: 0.95em;
+            color: #00cc66;
+            margin-top: 15px;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .clock-card:hover .remove-btn {
+            opacity: 1;
+        }
+
+        .remove-btn:hover {
+            background: #ff0000;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #00cc66;
+            font-size: 1.2em;
+        }
+
+        .toggle-24h {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-24h input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .time-info {
+            font-size: 0.85em;
+            color: #00cc66;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .clocks-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .clock-time {
+                font-size: 2.5em;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .control-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕐 RELÓGIO DIGITAL</h1>
+            <p>Múltiplos Fusos Horários em Tempo Real</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="citySelect">Cidade:</label>
+                <select id="citySelect">
+                    <option value="America/New_York">New York</option>
+                    <option value="Europe/London">Londres</option>
+                    <option value="Europe/Paris">Paris</option>
+                    <option value="Europe/Berlin">Berlim</option>
+                    <option value="Europe/Madrid">Madri</option>
+                    <option value="Europe/Rome">Roma</option>
+                    <option value="Europe/Amsterdam">Amsterdã</option>
+                    <option value="Europe/Istanbul">Istambul</option>
+                    <option value="Asia/Dubai">Dubai</option>
+                    <option value="Asia/Kolkata">Índia</option>
+                    <option value="Asia/Bangkok">Bangkok</option>
+                    <option value="Asia/Singapore">Singapura</option>
+                    <option value="Asia/Hong_Kong">Hong Kong</option>
+                    <option value="Asia/Tokyo">Tóquio</option>
+                    <option value="Asia/Seoul">Seul</option>
+                    <option value="Australia/Sydney">Sydney</option>
+                    <option value="Australia/Melbourne">Melbourne</option>
+                    <option value="Pacific/Auckland">Auckland</option>
+                    <option value="America/Los_Angeles">Los Angeles</option>
+                    <option value="America/Chicago">Chicago</option>
+                    <option value="America/Denver">Denver</option>
+                    <option value="America/Anchorage">Anchorage</option>
+                    <option value="Pacific/Honolulu">Honolulu</option>
+                    <option value="America/Mexico_City">Cidade do México</option>
+                    <option value="America/Toronto">Toronto</option>
+                    <option value="America/Argentina/Buenos_Aires">Buenos Aires</option>
+                    <option value="America/Sao_Paulo">São Paulo</option>
+                    <option value="Africa/Cairo">Cairo</option>
+                    <option value="Africa/Johannesburg">Johannesburgo</option>
+                    <option value="Africa/Lagos">Lagos</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="customCity">ou Fuso Horário (ex: UTC+3):</label>
+                <input type="text" id="customCity" placeholder="Ex: UTC+3 ou GMT-5">
+            </div>
+
+            <button onclick="addClock()">➕ Adicionar</button>
+
+            <div class="control-group toggle-24h">
+                <input type="checkbox" id="format24h" checked>
+                <label for="format24h">Formato 24h</label>
+            </div>
+        </div>
+
+        <div id="clocksContainer" class="clocks-grid"></div>
+        <div id="emptyMessage" class="empty-message" style="display: none;">
+            📋 Selecione uma cidade e clique em "Adicionar" para visualizar o relógio
+        </div>
+    </div>
+
+    <script src="clock.js"></script>
+</body>
+</html>
