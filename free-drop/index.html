@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Drop - Cookie Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: #1a1f3a;
+            border-bottom: 2px solid #00d4ff;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: #e0e0e0;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .navbar-links a:hover {
+            color: #00d4ff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: #1a1f3a;
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.3);
+            border-color: #00ffff;
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            color: #00d4ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00d4ff;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        select, textarea, input {
+            width: 100%;
+            padding: 12px 15px;
+            background: #0f1428;
+            border: 2px solid #2a2f4a;
+            color: #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        select:focus, textarea:focus, input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 150px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .service-btn {
+            padding: 12px 15px;
+            background: #0f1428;
+            border: 2px solid #2a2f4a;
+            color: #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .service-btn:hover {
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .service-btn.active {
+            background: #00d4ff;
+            color: #0a0e27;
+            border-color: #00d4ff;
+        }
+
+        .upload-area {
+            border: 2px dashed #00d4ff;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(0, 212, 255, 0.05);
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .upload-area:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #00ffff;
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            color: #0a0e27;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 10px 25px rgba(255, 68, 68, 0.3);
+        }
+
+        .cookies-list {
+            margin-top: 25px;
+        }
+
+        .cookie-item {
+            background: #0f1428;
+            border-left: 4px solid #00d4ff;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .cookie-item:hover {
+            background: #151a35;
+            border-left-color: #00ffff;
+        }
+
+        .cookie-info {
+            flex: 1;
+        }
+
+        .cookie-service {
+            color: #00d4ff;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .cookie-date {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .cookie-preview {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+
+        .device-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .device-opt {
+            padding: 15px;
+            background: #0f1428;
+            border: 2px solid #2a2f4a;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .device-opt:hover {
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .device-opt.selected {
+            background: #00d4ff;
+            color: #0a0e27;
+            border-color: #00d4ff;
+        }
+
+        .device-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .link-section {
+            background: #0f1428;
+            border: 2px solid #00d4ff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .link-section.active {
+            display: block;
+        }
+
+        .link-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .link-box input {
+            flex: 1;
+            padding: 12px 15px;
+            background: #0a0e27;
+            border: 2px solid #2a2f4a;
+            color: #00d4ff;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .btn-copy {
+            padding: 12px 25px;
+            width: auto;
+            min-width: 120px;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #1a3a1a;
+            border: 2px solid #00cc00;
+            color: #00ff00;
+            display: block;
+        }
+
+        .message.error {
+            background: #3a1a1a;
+            border: 2px solid #ff4444;
+            color: #ff6666;
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .inject-page {
+            display: none;
+        }
+
+        .inject-page.active {
+            display: block;
+        }
+
+        .inject-container {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .inject-title {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+        }
+
+        .inject-status {
+            font-size: 24px;
+            margin: 20px 0;
+            color: #00d4ff;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid #2a2f4a;
+            border-top: 4px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-checkmark {
+            font-size: 80px;
+            color: #00ff00;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .inject-info {
+            background: #1a1f3a;
+            border: 2px solid #00d4ff;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px auto;
+            max-width: 600px;
+            text-align: left;
+        }
+
+        .inject-info h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+        }
+
+        .inject-info ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .inject-info li {
+            padding: 10px 0;
+            border-bottom: 1px solid #2a2f4a;
+        }
+
+        .inject-info li:last-child {
+            border-bottom: none;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            border-top: 2px solid #1a1f3a;
+            margin-top: 60px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2a2f4a;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: #00d4ff;
+            border-bottom-color: #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">🔗 FREE DROP</div>
+        <div class="navbar-links">
+            <a onclick="showManager()">Manager</a>
+            <a href="https://github.com/BRZeusz/free-drop" target="_blank">GitHub</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- MANAGER PAGE -->
+        <div id="managerPage" class="page active">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('upload')">📤 Upload Cookies</button>
+                <button class="tab-btn" onclick="switchTab('saved')">💾 Cookies Salvos</button>
+                <button class="tab-btn" onclick="switchTab('generate')">🔗 Gerar Link</button>
+            </div>
+
+            <div id="message" class="message"></div>
+
+            <!-- UPLOAD TAB -->
+            <div id="uploadTab" class="tab-content">
+                <div class="main-grid">
+                    <div class="card">
+                        <div class="card-title">📥 Enviar Cookies</div>
+                        
+                        <div class="form-group">
+                            <label>Selecione o Serviço</label>
+                            <div class="services-grid" id="servicesGrid"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Upload de Arquivo</label>
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-icon">📁</div>
+                                <p>Clique ou arraste um arquivo .txt</p>
+                                <input type="file" id="fileInput" accept=".txt">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ou Cole Direto</label>
+                            <textarea id="cookieInput" placeholder="Cole seus cookies aqui (formato: name=value, um por linha)"></textarea>
+                        </div>
+
+                        <button class="btn" onclick="saveCookies()">💾 Salvar Cookies</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">📋 Instruções</div>
+                        <div style="line-height: 1.8; color: #aaa;">
+                            <p style="margin-bottom: 15px;"><strong style="color: #00d4ff;">Como extrair cookies:</strong></p>
+                            <ol style="margin-left: 20px; margin-bottom: 15px;">
+                                <li>Abra o site (Netflix, HBO Max, etc)</li>
+                                <li>Pressione F12 ou Ctrl+Shift+I</li>
+                                <li>Vá para Application > Cookies</li>
+                                <li>Selecione o domínio</li>
+                                <li>Copie todos os cookies</li>
+                            </ol>
+                            <p style="margin: 15px 0; padding: 15px; background: #0f1428; border-left: 3px solid #00d4ff; border-radius: 5px;">
+                                <strong style="color: #00d4ff;">⚠️ Importante:</strong> Cookies contêm dados sensíveis. Nunca compartilhe com pessoas não confiáveis!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SAVED TAB -->
+            <div id="savedTab" class="tab-content" style="display: none;">
+                <div class="card">
+                    <div class="card-title">💾 Seus Cookies Salvos</div>
+                    <div id="cookiesList" class="cookies-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">🗑️</div>
+                            <p>Nenhum cookie salvo ainda</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GENERATE TAB -->
+            <div id="generateTab" class="tab-content" style="display: none;">
+                <div class="main-grid">
+                    <div class="card">
+                        <div class="card-title">🔗 Gerar Link de Injeção</div>
+                        
+                        <div class="form-group">
+                            <label>Selecione o Dispositivo</label>
+                            <div class="device-selector">
+                                <div class="device-opt" onclick="selectDevice('pc')">
+                                    <div class="device-icon">💻</div>
+                                    <div>PC/Desktop</div>
+                                </div>
+                                <div class="device-opt" onclick="selectDevice('mobile')">
+                                    <div class="device-icon">📱</div>
+                                    <div>Mobile</div>
+                                </div>
+                                <div class="device-opt" onclick="selectDevice('tv')">
+                                    <div class="device-icon">📺</div>
+                                    <div>TV</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Duração do Link</label>
+                            <select id="linkDuration">
+                                <option value="1h">1 Hora</option>
+                                <option value="6h">6 Horas</option>
+                                <option value="24h">24 Horas</option>
+                                <option value="7d">7 Dias</option>
+                                <option value="infinite">Sem Expiração</option>
+                            </select>
+                        </div>
+
+                        <button class="btn" onclick="generateLink()">⚡ Gerar Link</button>
+
+                        <div id="linkResult" class="link-section">
+                            <h3 style="color: #00d4ff; margin-bottom: 15px;">✅ Link Gerado com Sucesso!</h3>
+                            <div class="link-box">
+                                <input type="text" id="generatedLink" readonly>
+                                <button class="btn btn-copy" onclick="copyLink()">📋 Copiar</button>
+                            </div>
+                            <p style="margin-top: 15px; color: #888; font-size: 12px;">
+                                ⏰ Compartilhe este link com cuidado!
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">⚡ Como Funciona</div>
+                        <div style="line-height: 1.8; color: #aaa;">
+                            <p style="margin-bottom: 15px;"><strong style="color: #00d4ff;">Processo:</strong></p>
+                            <ul style="margin-left: 20px;">
+                                <li>1️⃣ Você salva os cookies</li>
+                                <li>2️⃣ Escolhe o dispositivo (PC, Mobile, TV)</li>
+                                <li>3️⃣ Gera um link compartilhável</li>
+                                <li>4️⃣ Compartilha o link</li>
+                                <li>5️⃣ Quando clicam, injeta automaticamente</li>
+                            </ul>
+                            <p style="margin: 20px 0; padding: 15px; background: #0f1428; border-left: 3px solid #00d4ff; border-radius: 5px;">
+                                <strong style="color: #00d4ff;">🔒 Segurança:</strong> Cookies são codificados no URL. Expira automaticamente.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INJECT PAGE -->
+        <div id="injectPage" class="page inject-page">
+            <div class="inject-container">
+                <div class="inject-title">FREE DROP</div>
+                <div id="injectStatus" class="inject-status">
+                    <div class="loading"></div>
+                    <p>Processando injeção de cookies...</p>
+                </div>
+                <div id="injectInfo" class="inject-info" style="display: none;">
+                    <h3>✅ Injeção Concluída!</h3>
+                    <ul>
+                        <li>✔️ Cookies injetados com sucesso</li>
+                        <li>✔️ Recarregue a página para aplicar</li>
+                        <li>✔️ Você será redirecionado em breve</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>FREE DROP © 2024 | Gerenciador de Cookies Profissional</p>
+    </div>
+
+    <script src="free-drop/app.js"></script>
+</body>
+</html>
